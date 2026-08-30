@@ -141,8 +141,9 @@ def main() -> None:
             peak_vram_gb=peak_vram_gb,
         )
 
-        print(f"\n[gen] {n_prompts} reqs x {cfg['max_tokens']} tok  ->  {out_tok} out tok in {gen_s:.2f}s")
-        print(f"[gen] {out_tok_per_s:,.0f} output tok/s   |   {req_per_s:.2f} req/s   |   {in_tok} prompt tok")
+        mt = cfg["max_tokens"]
+        print(f"\n[gen] {n_prompts} reqs x {mt} tok -> {out_tok} out tok in {gen_s:.2f}s")
+        print(f"[gen] {out_tok_per_s:,.0f} out tok/s | {req_per_s:.2f} req/s | {in_tok} prompt tok")
         if ttfts:
             print(f"[gen] TTFT  p50 {ttft_p50 * 1000:.0f} ms   p99 {ttft_p99 * 1000:.0f} ms")
         else:
