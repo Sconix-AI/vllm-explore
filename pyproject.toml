@@ -9,6 +9,7 @@ dependencies = [
     "rich>=13",
     "numpy>=1.26",
     "torch>=2.7",
+    "vllm>=0.26.0",
 ]
 
 [dependency-groups]
@@ -17,14 +18,8 @@ viz = ["matplotlib>=3.8", "pandas>=2"]
 # for `task lab` and `task report` (Quarto executes the .qmd with jupyter)
 notebook = ["jupyterlab>=4", "ipykernel>=6", "jupyter-cache>=1"]
 
-[[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
-
 [tool.uv.sources]
 sconixlib = { path = "/home/sconix/research/os/sconixlib", editable = true }
-torch = { index = "pytorch-cu128" }
 
 [tool.ruff]
 line-length = 100
