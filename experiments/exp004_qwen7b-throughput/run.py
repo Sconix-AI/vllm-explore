@@ -9,12 +9,46 @@ Run it:  task run -- exp004_qwen7b-throughput
 
 from __future__ import annotations
 
+import subprocess
+import threading
 import time
 from pathlib import Path
 
-import torch
 from sconixlib import Run, load_config, set_seed
 from vllm import LLM, SamplingParams
+
+
+def _gpu_mem_used_mib() -> float:
+    """Device-wide VRAM in use, via nvidia-smi. vLLM runs the model in a spawned
+    subprocess so torch.cuda.* in this process sees nothing — poll the device."""
+    out = subprocess.check_output(
+        ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
+        text=True,
+    )
+    return max(float(x) for x in out.split())
+
+
+class _VramSampler(threading.Thread):
+    """Poll device VRAM in the background; keep the peak."""
+
+    def __init__(self, period_s: float = 0.1):
+        super().__init__(daemon=True)
+        self.period_s = period_s
+        self.peak_mib = 0.0
+        self._stop = threading.Event()
+
+    def run(self) -> None:
+        while not self._stop.is_set():
+            try:
+                self.peak_mib = max(self.peak_mib, _gpu_mem_used_mib())
+            except Exception:
+                pass
+            self._stop.wait(self.period_s)
+
+    def stop(self) -> float:
+        self._stop.set()
+        self.join(timeout=2)
+        return self.peak_mib
 
 HERE = Path(__file__).parent
 ROOT = HERE.parents[1]
@@ -41,9 +75,9 @@ def main() -> None:
     n_prompts = int(cfg["n_prompts"])
     prompts = [PROMPT_POOL[i % len(PROMPT_POOL)] for i in range(n_prompts)]
 
-    with Run(EXP, config=cfg) as run:
-        torch.cuda.reset_peak_memory_stats()
+    mem_before_mib = _gpu_mem_used_mib()
 
+    with Run(EXP, config=cfg) as run:
         t0 = time.perf_counter()
         llm = LLM(
             model=cfg["model"],
@@ -64,17 +98,19 @@ def main() -> None:
         # warmup — compiles kernels / fills caches, not measured
         llm.generate(prompts[: min(8, n_prompts)], params, use_tqdm=False)
 
-        torch.cuda.synchronize()
+        sampler = _VramSampler()
+        sampler.start()
         g0 = time.perf_counter()
         outputs = llm.generate(prompts, params, use_tqdm=False)
-        torch.cuda.synchronize()
         gen_s = time.perf_counter() - g0
+        peak_vram_mib = sampler.stop()
 
         out_tok = sum(len(o.outputs[0].token_ids) for o in outputs)
         in_tok = sum(len(o.prompt_token_ids) for o in outputs)
-        peak_vram_gb = torch.cuda.max_memory_allocated() / 1e9
-        free_b, total_b = torch.cuda.mem_get_info()
-        used_gb = (total_b - free_b) / 1e9
+        peak_vram_gb = peak_vram_mib / 1024
+        # gpu_memory_utilization * 32 GiB is what vLLM reserves up front; the
+        # sampled peak is the honest "how full did the card get" number.
+        used_gb = (peak_vram_mib - mem_before_mib) / 1024
 
         out_tok_per_s = out_tok / gen_s
         req_per_s = n_prompts / gen_s
@@ -110,7 +146,7 @@ def main() -> None:
             print(f"[gen] TTFT  p50 {ttft_p50 * 1000:.0f} ms   p99 {ttft_p99 * 1000:.0f} ms")
         else:
             print("[gen] TTFT  n/a (no per-request metrics in this vLLM build)")
-        print(f"[mem] torch peak {peak_vram_gb:.2f} GB   |   device used {used_gb:.2f} GB")
+        print(f"[mem] device VRAM peak {peak_vram_gb:.2f} GB   |   +{used_gb:.2f} GB over idle")
         print("\n--- sample output (req 0) ---")
         print(outputs[0].outputs[0].text.strip()[:600])
 
@@ -125,7 +161,7 @@ def main() -> None:
             out_tok_per_s=round(out_tok_per_s, 1),
             req_per_s=round(req_per_s, 2),
             peak_vram_gb=round(peak_vram_gb, 2),
-            device_used_gb=round(used_gb, 2),
+            vram_over_idle_gb=round(used_gb, 2),
             ttft_p50_ms=round(ttft_p50 * 1000, 1) if ttft_p50 else None,
             ttft_p99_ms=round(ttft_p99 * 1000, 1) if ttft_p99 else None,
         )
