@@ -35,20 +35,21 @@ class _VramSampler(threading.Thread):
         super().__init__(daemon=True)
         self.period_s = period_s
         self.peak_mib = 0.0
-        self._stop = threading.Event()
+        self._stop_evt = threading.Event()
 
     def run(self) -> None:
-        while not self._stop.is_set():
+        while not self._stop_evt.is_set():
             try:
                 self.peak_mib = max(self.peak_mib, _gpu_mem_used_mib())
             except Exception:
                 pass
-            self._stop.wait(self.period_s)
+            self._stop_evt.wait(self.period_s)
 
     def stop(self) -> float:
-        self._stop.set()
+        self._stop_evt.set()
         self.join(timeout=2)
         return self.peak_mib
+
 
 HERE = Path(__file__).parent
 ROOT = HERE.parents[1]
