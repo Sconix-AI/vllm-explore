@@ -1,0 +1,5 @@
+# Overrides on top of ../../configs/default.yaml — only put what changes here.
+model: facebook/opt-125m
+prompt: "The future of AI is"
+temperature: 0.8
+max_tokens: 50
