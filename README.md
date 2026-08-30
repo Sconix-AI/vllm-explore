@@ -33,4 +33,3 @@ Every `run.py` wraps its work in `with Run(...) as run:`. That writes the
 resolved config, git SHA + diff, `pip freeze`, GPU info, per-step metrics,
 and a summary into `results/<timestamp>__<name>__<sha>/`. `results/latest`
 points at the newest one.
-hi
