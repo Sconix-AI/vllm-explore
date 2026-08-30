@@ -4,7 +4,16 @@ version: "3"
 vars:
   # inline on python-spawning cmds — go-task env: won't override an ambient
   # TMPDIR, and /mnt/* temp dirs break pytest capture + sqlite.
-  PY: TMPDIR=/tmp uv run
+  # VLLM_WSL2_ENABLE_PIN_MEMORY: vllm disables pinned memory (and thus UVA)
+  # by default under WSL2 even on kernels new enough to support it.
+  # CUDA_HOME: a stray system /usr/bin/nvcc (CUDA 11.5, apt leftover) beats
+  # the venv's real CUDA13 toolchain in `which nvcc` lookups; flashinfer's
+  # arch detection needs the real one to recognize sm_120 (RTX 5090).
+  # NVCC_APPEND_FLAGS: uv resolved nvidia-cuda-nvcc==13.3.73 against
+  # nvidia-cuda-runtime==13.0.96 (independently-versioned pip packages) —
+  # flashinfer's CCCL headers refuse that skew by default; this is NVIDIA's
+  # own documented escape hatch for a newer-CTK-than-compiler mismatch.
+  PY: TMPDIR=/tmp VLLM_WSL2_ENABLE_PIN_MEMORY=1 CUDA_HOME=/home/sconix/research/projects/vllm-explore/.venv/lib/python3.12/site-packages/nvidia/cu13 NVCC_APPEND_FLAGS=-DCCCL_DISABLE_CTK_COMPATIBILITY_CHECK uv run
 
 tasks:
   setup:
