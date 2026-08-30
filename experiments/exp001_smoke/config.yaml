@@ -1,0 +1,2 @@
+# Overrides on top of ../../configs/default.yaml
+epochs: 15

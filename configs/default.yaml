@@ -1,0 +1,11 @@
+# Shared defaults. Each experiment's config.yaml is merged on top of this.
+seed: 0
+epochs: 20
+batch_size: 256
+lr: 0.003
+hidden: 128
+depth: 2
+dataset:
+  n: 8192
+  dim: 32
+  noise: 0.1

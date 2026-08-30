@@ -1,0 +1,18 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      # CPU-only on CI: skip the heavy CUDA torch wheel.
+      - run: uv sync --no-group viz --no-group notebook
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: TMPDIR=/tmp uv run pytest

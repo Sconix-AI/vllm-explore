@@ -1,0 +1,43 @@
+---
+title: "vllm-explore"
+subtitle: "How do llms inference engins work?"
+format:
+  html:
+    toc: true
+    code-fold: true
+    embed-resources: true
+jupyter: python3
+---
+
+```{python}
+#| label: load
+from sconixlib import load_runs
+df = load_runs("results/*")
+df[["name", "status", "duration_s", "git_sha", "finished_at"]] if len(df) else "no runs yet"
+```
+
+## Metrics across runs
+
+```{python}
+#| label: plot
+import json, matplotlib.pyplot as plt
+from pathlib import Path
+from sconixlib.viz import use_style
+use_style()
+fig, ax = plt.subplots()
+for d in sorted(Path("results").glob("*/")):
+    mp = d / "metrics.jsonl"
+    if not mp.exists():
+        continue
+    rows = [json.loads(x) for x in mp.read_text().splitlines() if x.strip()]
+    ycol = next((k for k in ("loss", "metric") if any(k in r for r in rows)), None)
+    if ycol:
+        ax.plot([r.get("step") for r in rows if ycol in r],
+                [r[ycol] for r in rows if ycol in r], label=d.name)
+ax.set_xlabel("step"); ax.set_ylabel("loss / metric"); ax.legend(fontsize=7)
+plt.show()
+```
+
+## Notes
+
+_Write the story here: what you asked, what you found, what's next._

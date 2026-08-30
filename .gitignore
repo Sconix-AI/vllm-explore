@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.pyc
+.ruff_cache/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# run outputs — reproducible from config + code, keep them local
+results/
+!results/.gitkeep
+
+# data + weights — version with DVC/rclone later, not git
+data/
+models/
+*.pt
+*.safetensors
+*.ckpt
+*.gguf
+
+report.html
+report_files/
+report.qmd_files/
+.quarto/
+.jupyter/
