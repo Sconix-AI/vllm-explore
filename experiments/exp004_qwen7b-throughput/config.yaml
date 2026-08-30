@@ -1,0 +1,10 @@
+# Overrides on top of ../../configs/default.yaml — only put what changes here.
+model: Qwen/Qwen2.5-7B-Instruct
+max_model_len: 4096
+gpu_memory_utilization: 0.90
+
+# workload
+n_prompts: 64          # concurrent requests submitted in one generate() call
+max_tokens: 128        # output tokens per request (ignore_eos so every run is comparable)
+temperature: 0.7
+seed: 0
