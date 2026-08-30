@@ -25,6 +25,14 @@ tasks:
   run:
     desc: "Run an experiment (default: exp001_smoke). Usage: task run -- exp002_foo"
     cmds:
+      # auto-commit so this run's env.json records a clean git sha, not a
+      # dirty diff — no-op if the tree is already clean.
+      - |
+        if [ -n "$(git status --porcelain)" ]; then
+          git add -A
+          git commit -q -m "auto-snapshot before run: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "[sconix] committed working changes before run ($(git rev-parse --short HEAD))"
+        fi
       - "{{.PY}} python experiments/{{.CLI_ARGS | default \"exp001_smoke\"}}/run.py"
 
   exp:

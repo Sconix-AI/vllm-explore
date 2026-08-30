@@ -29,6 +29,7 @@ Never invent new workflows. If something is missing, add it as a `task`.
 - **`results/` is disposable** — it's git-ignored and rebuildable from code + config. Never commit it. Same for `data/` and `models/`.
 - **Green before commit.** `task lint` must pass (ruff format + check + pytest).
 - **Small commits**, one experiment or one `src/` change each.
+- **`task run` auto-commits** any dirty working tree before running, so every `results/.../env.json` records a clean git sha instead of a diff. You don't need to remember to commit before running — but keep edits focused (see above) since the auto-commit message is generic (`auto-snapshot before run: <timestamp>`).
 
 ## sconixlib API (already installed, editable)
 
