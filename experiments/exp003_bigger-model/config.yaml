@@ -1,0 +1,6 @@
+# Overrides on top of ../../configs/default.yaml — only put what changes here.
+model: Qwen/Qwen2.5-7B-Instruct
+max_model_len: 4096
+prompt: "Explain, in 3 sentences, how a KV cache speeds up LLM inference."
+temperature: 0.7
+max_tokens: 200
