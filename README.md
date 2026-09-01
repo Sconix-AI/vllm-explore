@@ -1,35 +1,49 @@
 # vllm-explore
 
+**Question:** how do LLM inference engines actually behave under load — and what
+does an RTX 5090 (WSL2) give you?
 
+A reproducible benchmark project on the [Sconix research
+engine](https://github.com/Sconix-AI/sconix-research): every run records its
+resolved config, git SHA + diff, `pip freeze`, GPU info, and per-step metrics
+into `results/<timestamp>__<name>__<sha>/`.
 
-**Question:** How do llms inference engins work?
+## Findings so far
 
-## Loop
+**Qwen2.5-7B-Instruct, vLLM, RTX 5090:**
+
+| metric | value |
+|---|---|
+| batched decode @ batch 64 | **≈ 5,560 output tok/s** (≈ 43 req/s), reproducible |
+| cold load | 111 s (torch.compile + CUDA graphs + FlashInfer autotune) |
+| warm load (caches primed) | 21 s |
+| VRAM working set | ≈ 17 GB |
+
+**Batch-size sweep {1…1024}:** aggregate decode scales ~linearly to batch 64,
+knee at 128–256, saturates ≈ **12,500 output tok/s**. Per-request rate holds
+≈ 85 tok/s to batch 64, then falls off (45 / 24 / 12 tok/s at 256 / 512 / 1024).
+Serving sweet spot: **batch 64–128**.
+
+Getting vLLM running at all on the 5090 under WSL2 took fixing three environment
+quirks (a stray system `nvcc` on PATH, a CUDA-13 subpackage skew, a pinned-memory
+setting) — each written up in `log.md`.
+
+## Run
 
 ```bash
-task setup              # once
-task exp -- my-idea     # scaffold experiments/expNNN_my-idea/
-# edit that experiment's config.yaml + run.py
+task setup
+task exp -- my-idea           # scaffold experiments/expNNN_my-idea/
 task run -- expNNN_my-idea
-task compare            # see all runs side by side
-task report             # render report.html
+task compare                  # runs side by side
+task report                  # render report.html
 ```
 
 ## Layout
 
-| Path | What |
+| path | what |
 |---|---|
-| `questions.md` | running list of open questions |
-| `log.md` | dated project log, newest on top |
-| `src/vllm_explore/` | reusable code (data, model, ...) |
-| `experiments/` | one folder per experiment; `_template/` is the seed |
-| `configs/default.yaml` | shared defaults, overridden per experiment |
-| `results/` | one folder per run, written by `sconixlib.Run` — git-ignored |
-| `report.qmd` | Quarto report that reads `results/` |
-
-## Reproducibility
-
-Every `run.py` wraps its work in `with Run(...) as run:`. That writes the
-resolved config, git SHA + diff, `pip freeze`, GPU info, per-step metrics,
-and a summary into `results/<timestamp>__<name>__<sha>/`. `results/latest`
-points at the newest one.
+| `questions.md` | open questions |
+| `log.md` | dated log, newest on top |
+| `experiments/` | one folder per experiment (`_template/` is the seed) |
+| `results/` | one folder per run (git-ignored) |
+| `report.qmd` | Quarto report over `results/` |
